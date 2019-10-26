@@ -1,2 +1,2 @@
 # quasi_experiment
-Using quasi-experiment to measure media effects
+Measuring media effects with quasi-experiment
