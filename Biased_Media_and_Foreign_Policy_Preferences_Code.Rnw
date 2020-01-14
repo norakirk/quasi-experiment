@@ -1,0 +1,1087 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{fullpage}
+\usepackage{pdflscape}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{spverbatim}
+\usepackage{multirow}
+\usepackage{bbm}
+\usepackage[makeroom]{cancel}
+\usepackage{float}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{colortbl}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    citecolor=blue,
+    filecolor=blue,
+    linkcolor=blue,
+    urlcolor=blue
+}
+\usepackage{dcolumn}
+\usepackage{url}
+
+% for space between rows in a table
+% \renewcommand{\arraystretch}{1.5}
+
+\date{}
+\title{Biased Media and Foreign Policy Preferences: \\ Online Appendix}
+\author{Anonymous}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+% \SweaveOpts{concordance=TRUE}
+
+\maketitle
+
+\tableofcontents
+
+\clearpage
+
+\appendix
+
+\section{Background} \label{sec:background}
+
+Latvia has five regions, one of them, Latgale, sharing a mutual border with Russia, Belarus and Estonia. Latgale has the highest share of Russian speakers, 65.6 percent, followed by the region of the capital, Riga, with 56 percent. Before the European Union referendum, ethnic Latvian and Russian population in the country had compatible demographic background: average age was 46.6 and 48.5, age of completed education -- 20.6 and 19.8 respectively, and average houshold income -- 101-150 LVL a month.\footnote{European Values Survey 1999.} Latvian is a second language for 20.8 percent of the population, and 43.7 percent speak Russian as a second language. In total, 71 percent of ethnic Latvians speak Russian, and 52 percent of ethnic Russians speak Latvian in a census from 2011. Latvia experienced an influx of Russian-speaking immigrants during the Soviet Union period. The region received substantial industrial investments from the Soviet government --- a large number of Soviet factories and enterprises were located in the region. After the fall of the Soviet Union in 1991, many Russian speakers in Riga left the country, but a significant amount chose to remain in the Eastern regions. Latgale is the most impoverished region in the country --- it has the highest unemployment rate and the lowest level of individual income tax per capita among the counties' budgets.\footnote{Central Statistical Bureau of Latvia 2005.} In general, the economic development of Latvia has been marked by peaks and valleys, witnessing a particularly dangerous volatility before and after World War II, in 1991, and after the crisis in 2008. The country survived the most significant level of depopulation in these same years. These events do not coincide with the period of analysis of this study.
+
+% Do Russian Latvians travel to Russia? Do they work there? After the EU, many went to work in the UK, not in Russia (OECD2013). The region is poor, it need more jobs but they vote against the EU. Also, the EU could help them to resolve the issue of the language but instead they became even more disintegrated and isolated (RefLVreport).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% begin table %%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}[H]
+\centering
+\caption{The most popular TV channels in Latvia in 2015}
+\label{sec:TVchannels}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllllllll}
+\hline \hline
+Rank & TV Channel & Founded & Share, \% & Language & Genre & Ownership & Founder & Funding \\ \hline
+1    & TV3   & 1998 & 11.5 & Latvian & General & Private & Modern Times Group & Commercials\\
+2    & LTV1  & 1954 & 9.8 & \begin{tabular}[c]{@{}l@{}}Latvian, \\ Russian\end{tabular} & General & Public & Latvia's Television     & \begin{tabular}[c]{@{}l@{}}Latvian government, \\ commercials\end{tabular} \\ 
+3    & PBK & 2002 & 8.8 & Russian                                                     & General & Private   & Baltijas Mediju Alianse & \begin{tabular}[c]{@{}l@{}}Russian government, \\ commercials\end{tabular} \\ 
+4    & LNT  & 1996 & 8.3 & Latvian & General & Private & Modern Times Group & Commercials \\
+5    & \begin{tabular}[c]{@{}l@{}}NTV \\ Mir Baltic\end{tabular} & 2011 & 7.4 & Russian & General & Private   & Baltijas Mediju Alianse & \begin{tabular}[c]{@{}l@{}}Russian government, \\ commercials\end{tabular} \\ \hline
+\multicolumn{9}{l}{\textit{\begin{tabular}[c]{@{}l@{}}Source: TNS Latvia 2015. Share, \% - share of viewing, the percentage of the total viewing audience watching over a given \\ period of time.\end{tabular}}} \\ 
+\end{tabular}%
+}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% end table %%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+
+<<echo=FALSE,results='hide',message=FALSE,warning=FALSE>>=
+rm(list=ls())
+
+packages <- c("stringi", "mnormt", "lubridate","sp", "rgeos", "lfe", "AER","rgdal","gtools", "multiwayvcov","lmtest", "mgcv", "CBPS", "locfit", "coda", "KRLS", "verification", "splines")
+
+new.packages <- packages[!(packages %in% installed.packages()[,"Package"])]; if(length(new.packages)){install.packages(new.packages)}
+lapply(packages, require, character.only = TRUE)
+rm(packages, new.packages)
+
+source("helperfunctions.R")
+
+library(tidyverse)
+library(plyr)
+library(doBy)
+library(xtable)
+library(lmtest)
+library(sandwich)
+library(texreg)
+library(grid)
+library(gridExtra)
+library(rJava)
+library(xlsx)
+library(MASS)
+library(mgcv)
+library(knitr)
+library(SemiPar)
+library(stargazer)
+library(summarytools)
+library(cowplot)
+library(foreign)
+
+# packages for a simple text analysis
+library(data.table)
+library(tidytext)
+library(widyr)
+library(igraph)
+library(ggraph)
+library(tidyr)
+library(textdata)
+
+@
+
+<<Background, echo=FALSE,results='hide',message=FALSE,warning=FALSE, error=FALSE>>=
+
+# Load the datasets:
+# dataset ZA3792_v3-0-1.dta from EVS 1999
+# dataset ESS3e03_7.dta from ESS 2006
+# data ZA4767_q_lv.dta from EVS 2008
+
+# EVS 1999
+# dataset ZA3792_v3-0-1.dta from Europeanvaluesstudy.eu
+evs1999 <- read.dta("ZA3792_v3-0-1.dta")
+
+# ESS 2006
+ess2006_full <- read.dta("ESS3e03_7.dta")
+ess2006 <- filter(ess2006_full, cntry=="LV") # only Latvia
+
+# EVS 2008, longitudinal with all countries and 
+evs2008_full <- read.dta("ZA4767_q_lv.dta")
+evs2008 <- filter(evs2008_full, S003=="Latvia" & S002EVS == "2008-2010")
+
+#### EVS 1999: Demographic background #### 
+evs1999$ethnicity <- as.numeric(evs1999$c1)
+evs1999$ethn[evs1999$ethnicity==6] <- "Latvian"
+evs1999$ethn[evs1999$ethnicity==7] <- "Russian"
+evs1999$ethn[evs1999$ethnicity==8] <- NA
+# median age
+evs1999 %>% group_by(c1) %>% summarise_at(vars(age), funs(mean(., na.rm=TRUE)))
+# age completed education
+evs1999 %>% group_by(c1) %>% summarise_at(vars(v303), funs(mean(., na.rm=TRUE)))
+# income
+evs1999$income <- as.numeric(evs1999$v320)
+evs1999 %>% group_by(c1) %>% summarise_at(vars(income), funs(mean(., na.rm=TRUE)))
+@
+
+\section{Attitudes and public opinion before the EU referendum} \label{sec:attitudes}
+
+<<News consumption, echo=FALSE,results='hide',message=FALSE,warning=FALSE>>=
+
+#### 1999 ####
+level_key99 <- c("every day" = "daily",
+                 "several times a week" = "weekly", 
+                 "once or twice a week" = "weekly", 
+                 "less often" = "never")
+
+evs1999$news99 <- recode_factor(evs1999$v263, !!!level_key99)
+
+# Plot new consumption among Latvians and Russians in 1999
+news_comsumption1999 <- evs1999 %>% drop_na(news99, ethn) %>%
+ggplot() + stat_count(mapping = aes(x=news99, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() +
+  labs(x="News consumption (EVS 1999)", y="Share")
+
+
+#### 2006 ####
+level_key_lang <- c("LAV" = "Latvian", "RUS" = "Russian", "888" = NA, "999" = NA,
+                    "ROM" = NA, "LIT" = NA, "UKR" = NA, "BEL" = NA, "EST" = NA, "POL" = NA)
+ess2006$ethn <- recode_factor(ess2006$lnghoma, !!!level_key_lang)
+
+level_key06 <- c("0,5 hour to 1 hour" = "daily", 
+               "More than 1 hour, up to 1,5 hours" = "daily", 
+               "More than 1,5 hours, up to 2 hours" = "daily",
+               "More than 2 hours, up to 2,5 hours" = "daily",
+               "More than 2,5 hours, up to 3 hours" = "daily",
+               "More than 3 hours" = "daily",
+               "Less than 0,5 hour" = "weekly",
+               "No time at all" = "never")
+
+ess2006$news06 <- recode_factor(ess2006$tvpol, !!!level_key06)
+table(ess2006$news06, ess2006$lnghoma)
+news_comsumption2006 <- ess2006 %>% drop_na(news06, ethn) %>%
+ggplot() + stat_count(mapping = aes(x=news06, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() +
+  labs(x="News consumption (ESS 2006)", y="Share")
+
+news_comsumption2006 <- news_comsumption2006 + scale_y_continuous(limits=c(0, 0.7))
+news_comsumption1999 <- news_comsumption1999 + scale_y_continuous(limits=c(0, 0.7))
+
+@
+
+\subsection{TV media exposure}
+
+\begin{center}
+<<TV watching,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=3,fig.height=4.5>>=
+grid.draw(rbind(ggplotGrob(news_comsumption1999), ggplotGrob(news_comsumption2006), size = "last"))
+@
+\end{center}
+
+\clearpage
+
+<<Attitudes and public opinion,echo=FALSE,results='hide',message=FALSE,warning=FALSE>>=
+
+#### confidence in NATO #### 
+# EVS 1999
+NATO_1999 <- evs1999 %>% drop_na(o26, ethn) %>%
+ggplot() + stat_count(mapping = aes(x=o26, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x="Confidence in NATO (EVS 1999)", y="Share")
+# EVS 2008
+NATO_2008 <- evs2008 %>% drop_na(E069_19, S016) %>%
+ggplot() + stat_count(mapping = aes(x=E069_19, y=..prop.., group=1)) +
+  facet_grid(~S016) + # language
+  theme_bw() + theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(x="Confidence in NATO (EVS 2008)", y="Share")
+
+NATO_1999 <- NATO_1999 + scale_y_continuous(limits=c(0, 0.5))
+NATO_2008 <- NATO_2008 + scale_y_continuous(limits=c(0, 0.5))
+
+#### confidence in EU or trust in EP ####
+# 1999
+EU_1999 <- evs1999 %>% drop_na(v209, ethn) %>%
+ggplot() + stat_count(mapping = aes(x=v209, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x="Confidence in the EU (EVS 1999)", y="Share")
+# 2008
+EU_2008 <- evs2008 %>% drop_na(E069_18, S016) %>%
+ggplot() + stat_count(mapping = aes(x=E069_18, y=..prop.., group=1)) +
+  facet_grid(~S016) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x="Confidence in the EU (EVS 2008)", y="Share")
+
+EU_1999 <- EU_1999 + scale_y_continuous(limits=c(0, 0.45))
+EU_2008 <- EU_2008 + scale_y_continuous(limits=c(0, 0.45))
+
+# trust in the European Parliament from ESS 2006
+EP_2006 <- ess2006 %>% drop_na(trstep, ethn) %>%
+ggplot() + stat_count(mapping = aes(x=trstep, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(x="Confidence in the European Parliament (ESS 2006)", y="Share")
+
+# satisfaction with democracy in 1999
+Satisfied_democracy <- evs1999 %>% drop_na(v213, ethn) %>% 
+  ggplot() + stat_count(mapping = aes(x=v213, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(x="Satisfaction with democracy (EVS 1999)", y="Share")
+
+# view government in 1999
+table(evs1999$v214 <- factor(evs1999$v214))
+view_gov_key <- c("1" = "bad", "2"= "2", "3"="3", "4"="4", "5"="5", "6"="6","7"="7",
+                  "8"="8", "9"="9", "10" = "very good")
+evs1999$view_gov <- recode_factor(evs1999$v214, !!!view_gov_key)
+View_government <- evs1999 %>% drop_na(view_gov, ethn) %>% 
+  ggplot() + stat_count(mapping=aes(x=view_gov, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 40, hjust = 1)) +
+  labs(x="View government (EVS 1999)", y="Share")
+
+# good/bad: more respect for authority
+Respect_authority <- evs1999 %>% drop_na(v196, ethn) %>%
+  ggplot() + stat_count(mapping=aes(x=v196, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(x="Respect for authority (EVS 1999)",
+       y="Share")
+
+# how much confidence in: the police
+Confidence_police <- evs1999 %>% drop_na(v205, ethn) %>% 
+  ggplot() + stat_count(mapping=aes(x=v205, y=..prop.., group=1)) +
+  facet_grid(~ethn) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(x="Confidence in the police (EVS 1999)", y="Share")
+@
+
+\subsection{Confidence in the European Union and NATO}
+
+\begin{center}
+<<Confidence in the EU,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=3,fig.height=5>>=
+grid.draw(rbind(ggplotGrob(EU_1999), ggplotGrob(EU_2008), size = "last"))
+@
+\end{center}
+
+\subsection{Confidence in NATO}
+
+\begin{center}
+<<Confidence in NATO,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=3,fig.height=5>>=
+grid.draw(rbind(ggplotGrob(NATO_1999), ggplotGrob(NATO_2008), size = "last"))
+@
+\end{center}
+
+\clearpage
+
+\subsection{Political attitudes}
+
+\begin{center}
+<<Democracy and authority,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=3,fig.height=7>>=
+grid.draw(rbind(ggplotGrob(Satisfied_democracy), ggplotGrob(Respect_authority), ggplotGrob(Confidence_police), size = "last"))
+@
+\end{center}
+
+% \begin{center}
+<<Gov and police,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=1.5,fig.height=5>>=
+# grid.draw(ggplotGrob(Confidence_police, size = "last"))
+@
+%\end{center}
+
+\clearpage
+
+% \section{European Union referendum results by ethnicity}
+
+<<echo=FALSE,results='hide',message=FALSE>>=
+
+# getwd()
+# setwd("/Users/eleonorakirkizh/Desktop/Short Article/Analysis")
+dt <- read.xlsx("Fulldata.xlsx", sheetName="Sheet1", full.names=T)
+
+# summ ethnicities, whose first language is Russian
+dt$AllRus <- dt$Ethn.Rus + dt$Ethn.Bel + dt$Ethn.Ukr
+
+# covariates
+dt$Work.age_pct = (dt$Working.age.2000 / dt$Population.2000)
+dt$Age60_pct = (dt$Age.60.and.over.2000 / dt$Population.2000)
+dt$Ethn.Lat_pct = (dt$Ethn.Lat / dt$Population.2000)
+dt$Ethn.Rus_pct = (dt$Ethn.Rus / dt$Population.2000)
+dt$Edu_pct = (dt$Higher.Education / dt$Population.2000)
+dt$AllRus_pct = (dt$AllRus / dt$Population.2000)
+dt$Ref1998 = (dt$Against.the.repeal.1998 / dt$Total.voters.Referendum.1998)
+dt$signal_norm = (dt$Signal.Pskov..dBm.-min(dt$Signal.Pskov..dBm., na.rm=TRUE))/(max(dt$Signal.Pskov..dBm., na.rm=TRUE)-min(dt$Signal.Pskov..dBm., na.rm=TRUE))
+dt$turn2003 = (dt$Totality.of.voters / (dt$Working.age.2000 + dt$Age.60.and.over.2000))
+dt$Signal.new = (dt$Signal.NEW.dB-min(dt$Signal.NEW.dB, na.rm=TRUE))/(max(dt$Signal.NEW.dB, na.rm=TRUE)-min(dt$Signal.NEW.dB, na.rm=TRUE))
+dt$Signal <- dt$signal_norm
+
+# variable for unemployment rate
+mean(as.numeric(dt$Unempl.rate))
+dt$unemp[dt$Unempl.rate == "<5"] <- 1
+dt$unemp[dt$Unempl.rate == "5 10"] <- 2
+dt$unemp[dt$Unempl.rate == "10 15"] <- 3
+dt$unemp[dt$Unempl.rate == "15 20"] <- 4
+dt$unemp[dt$Unempl.rate == "20 25"] <- 5
+dt$unemp[dt$Unempl.rate == ">25"] <- 6
+# normalization of unemployment rate
+dt$uemp_norm = (dt$unemp-min(dt$unemp))/(max(dt$unemp)-min(dt$unemp))
+@
+
+<<Rus_vote,echo=FALSE,results='hide',warning=FALSE,message=FALSE,fig.width=5,fig.height=4>>=
+
+# LV_vote <- ggplot(dt, mapping = aes(x=Ethn.Lat_pct, y=NA.)) + geom_point(size=1) + geom_smooth(size=1) + theme_classic() + labs(x= "Share of ethnic Latvians in a country", y="Vote share for joining the EU") + theme(axis.text=element_text(size=8))
+
+# Rus_Vote <- ggplot(dt, mapping = aes(x = Ethn.Rus_pct, y = NA.)) + geom_point(size=1) + geom_smooth(size=1) + theme_classic() + labs(x = "Share of ethnic Russians in a county", y = "Vote share for joining the EU") + theme(axis.text=element_text(size=8))
+
+# gridExtra::grid.arrange(Rus_Vote, ncol=1)
+
+@
+
+\clearpage
+
+\section{Russian TV media coverage of Latvia}\label{sec:mediacov}
+
+<<echo=FALSE,results='hide',warning=FALSE>>=
+
+eu_lv_mentions <- read.csv(file = "Mentions.csv", 
+                     header = TRUE, sep=",", fileEncoding="latin1", 
+                     blank.lines.skip = TRUE, na.strings="",
+                     stringsAsFactors=FALSE, skipNul = TRUE, fill=T, quote = "\"")
+
+reshaped_mentions <- eu_lv_mentions %>% gather(keyword, freq, European.Union:Latvia)
+reshaped_mentions$Keyword <- reshaped_mentions$keyword
+str(reshaped_mentions$Keyword)
+reshaped_mentions$Keyword <- dplyr::recode(reshaped_mentions$Keyword, "European.Union" = "European Union")
+
+str(reshaped_mentions$Date)
+reshaped_mentions$Date <- factor(reshaped_mentions$Date)
+reshaped_mentions$Datenew <- strptime(as.character(reshaped_mentions$Date), "%d/%m/%Y")
+str(reshaped_mentions$Datenew)
+reshaped_mentions$Month_Yr <- format(as.Date(reshaped_mentions$Datenew), "%Y-%m")
+str(reshaped_mentions$Month_Yr)
+reshaped_mentions$Month_Yr <- factor(reshaped_mentions$Month_Yr)
+
+@
+
+<<Mentions,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=6,fig.height=3>>=
+
+ggplot(reshaped_mentions, aes(x = Month_Yr, y = freq, group = Keyword)) + 
+  geom_line(aes(color = Keyword), size = 0.5) + scale_color_grey() + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 50, hjust = 1)) + 
+  scale_fill_discrete(breaks=c("European Union","Latvia")) +
+  xlab("") + 
+  ylab("Mentions (per month)") +
+  geom_vline(xintercept=which(reshaped_mentions$Month_Yr == '2003-09'), 
+  linetype="dashed", color = "#00AFBB", size=1) +
+  annotate("text",
+           x = c(12),
+           y = c(370),
+           label = c("EU referendum"),
+           family = "", fontface = 3, size=2.5, color = "#00AFBB")
+
+@
+
+<<echo=FALSE,results='hide',warning=FALSE,message=FALSE,out.width='4in'>>=
+
+#### Tidy text analysis ####
+# Rus TV tetxs preparation
+rustv_text <- read.csv(file = "Russian_TV_Texts_Weeks.csv", 
+                     header = TRUE, sep=",", fileEncoding="latin1", 
+                     blank.lines.skip = TRUE, na.strings="",
+                     stringsAsFactors=FALSE, skipNul = TRUE, fill=T, quote = "\"")
+
+# Apply stop words
+rustv_text <- rustv_text %>% 
+  unnest_tokens(word, Translation) %>% 
+  anti_join(stop_words)
+
+# additional stop words from the Russian-Latvian context
+my_stopwords <- tibble(word = c(as.character(1:242),
+                       "korr", "ä·e", "vä", "10", "20", "50", "100", "80", "corr", "2004",
+                       "40", "60", "1", "2", "2003", "25", "4", "6", "ii", "ntv", 
+                       "channel", "23", "30", "38", "77", "ð", "10,000", "100,000", "11", 
+                       "15",
+                       "17","1999", "2000", "2001", "22", "35", "41", "44", "5", "56", 
+                       "85", "88", "9", "a.m.", "one's", "pr", "st", "00", "1,400,000", "12",
+                       "124", "13", "150", "150,000", "160", "166", "16th", "170", "2.5", 
+                       "2005",
+                       "23rd", "250,000", "25th", "29", "30,000", "300", "300th", "39", "400"
+                       , "40th",
+                       "476", "500,000", "53", "55", "63.5", "64", "7", "700", "8.5", "82",
+                       "85,000", "90", "92", "93", "93rd", "94th", "96.5", "99", "å", "a.i",
+                       "eec", "gã", "i.e", "jan's", "ns", "p.m.", "pre", "tu", "tvc", "tvs",
+                       "tws", "visitive:â", "zorina.correspondent's", "vedushian", "time", 
+                       "vesti", "vedushchiy", "vedushchiy", "vedusha", "veduchiy", 
+                       "vedusion", "veduschy", "vedushay", "vedushaya", "vedushiy", "miilis",
+                       "forest", "freiberga", "vaira", "freiberg's", 
+                       "vicket", "petrovskiy"))
+
+rustv_text <- rustv_text %>% anti_join(my_stopwords)
+word_count <- rustv_text %>% dplyr::count(word, sort = TRUE)
+
+# most frequent words
+# rustv_text %>%
+#  dplyr::count(word, sort = TRUE) %>%
+#  filter(n >= 25) %>%
+#  mutate(word = reorder(word, n)) %>%
+#  ggplot(aes(word, n)) +
+#  geom_col() +
+#  xlab(NULL) +
+#  coord_flip()
+@
+
+\clearpage
+
+<<Text network graph,echo=FALSE,results='hide',warning=FALSE,message=FALSE>>=
+
+# Preraring data for a text network graph 
+rustv_wordpairs <- rustv_text %>% 
+  widyr::pairwise_count(word, ID, sort = TRUE, upper = FALSE)
+rustv_wordpairs$Cooccurrence <- rustv_wordpairs$n
+
+
+# Plot the text network graph 
+# set.seed(1234)
+# rustv_wordpairs %>% filter(n >= 10) %>% graph_from_data_frame() %>% ggraph(layout = "fr") + geom_edge_link(aes(edge_alpha = Cooccurrence, edge_width = Cooccurrence), edge_colour = "cyan4") + geom_node_point(size = 5) + geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines")) + theme_void()
+
+@
+
+
+<<echo=FALSE,results='hide',warning=FALSE,message=FALSE,error=TRUE>>=
+r = getOption("repos")
+r["CRAN"] = "http://cran.us.r-project.org"
+options(repos = r)
+
+# Sentiment analysis
+get_sentiments("afinn")
+get_sentiments("bing")
+get_sentiments("nrc")
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+table(rustv_text$Channel)
+rustv_text %>%
+  filter(Channel == "NTV") %>%
+  inner_join(nrc_joy) %>%
+  dplyr::count(word, sort = TRUE)
+
+str(as.numeric(as.factor(rustv_text$Date)))
+rustv_sentiment <- rustv_text %>%
+  inner_join(get_sentiments("bing")) %>%
+  dplyr::count(Channel, index = ID %/% 1, sentiment) %>%
+  spread(sentiment, n, fill = 5) %>%
+  mutate(sentiment = positive - negative)
+
+rustv_sentiment_weeks <- rustv_text %>%
+  inner_join(get_sentiments("bing")) %>%
+  dplyr::count(Channel, index = Weeks.before.referendum %/% 1, sentiment) %>%
+  spread(sentiment, n, fill = 5) %>%
+  mutate(sentiment = positive - negative)
+
+install.packages("wesanderson")
+library(wesanderson)
+cbp2 <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7")
+
+# Plot sentiment of all texts
+# ggplot(rustv_sentiment_weeks, aes(-index, sentiment, fill = Channel)) +
+# geom_col(show.legend = TRUE) + 
+# labs(y = "Sentiment", x = "Weeks until the EU referendum") +
+# scale_fill_manual(values = cbp2)
+@
+
+\clearpage
+
+<<Sentiment,echo=FALSE,results='hide',warning=FALSE,message=FALSE>>=
+# ggplot(rustv_sentiment, aes(index, sentiment, fill = Channel)) + geom_col(show.legend = T) + labs(y = "Sentiment", x = "Text ID") + scale_fill_manual(values = cbp2) + ggtitle("Automated sentiment analysis") + theme_classic() + theme(plot.title = element_text(size = 10, hjust = 0.5), legend.title = element_text(color = "black", size = 8), legend.text = element_text(color = "black", size = 8), axis.text = element_text(size=8), axis.title = element_text(size=8))
+@
+
+\clearpage
+
+\section{Russian television reception} \label{sec:tvcoverage}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1.0\linewidth, height=0.43\textheight]{precincts.png}
+\caption{Mapped precincts in Latvia, up to 150 km from the Russian border. Source: Radio Mobile, ITU 2003.}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\linewidth, height=0.43\textheight]{Coverage.png}
+\caption{Estimated coverage of Russian analog TV transmitters in Latvian. Green is a good reception (watching TV is possible), yellow is a moderate reception (poor quality of picture), and red -- no signal. Triangles in Latvia are Latvian precincts, and in Russia -- Russian analog TV towers. For illustration, FM towers are also placed on the map, but not included in the estimation of the coverage.}
+\label{fig:Cov}
+\end{figure}
+
+\clearpage
+
+\section{The Model}
+
+To formalize the issue, I will use the notation from JasjeetTitiunik. Let $M_i$ be equal to 1 if a county $i$ has the Russian TV signal and equal to 0 if a county $i$ has no signal, and let $R_i$ be equal to 1 if a county $i$ has 60 or more percent of ethnic Russians, and 0 if otherwise. Then, the vote share against joining the EU in a county $i$ will be $Y_{0i}$ if $M_i$=0 and $R_i$=0 (the county has no signal of Russian TV and less than 60 percent of ethnic Russians), then $Y_{1i}$ vote share against joining the EU if $M_i$=0 and $R_i$=1 (the county has no signal and the share of ethnic Russians 60 or more percent), and $Y_{2i}$ if $M_i$=1 and $R_i$=1 (the county has the signal and the share of ethnic Russians 60 or more percent). Hence, we observe the following vote share against joining the EU:
+\begin{equation}
+Y_i = Y_{0i} \cdot (1-M_i) \cdot (1-R_i)+Y_{1i} \cdot (1-M_i) \cdot R_i + Y_{2i} \cdot M_i \cdot R_i.
+\end{equation}
+The average treatment effect on the treated (ATT) will be
+\begin{equation}
+ATT_0 = E[Y_{2i}-Y_{0i} | M_i=1, R_i=1].
+\end{equation}
+\begin{equation}
+ATT_1 = E[Y_{2i}-Y_{1i} | M_i=1, R_i=1].
+\end{equation}
+However, as I mentioned above, distance to Russia and the presence of a river or lake in a county may jeopardize the randomness of the assignment of the signal strength to a county. Thus, I control for these factors and derive a weaker version of my research design:
+\begin{equation}
+ATT_0 = E[Y_{2i}-Y_{0i} | M_i=1, R_i=1, \mathbf{X}].
+\end{equation}
+\begin{equation}
+ATT_1 = E[Y_{2i}-Y_{1i} | M_i=1, R_i=1, \mathbf{X}],
+\end{equation}
+where $\mathbf{X}$ is a vector of observable traits.
+
+I derive the following equation:
+\begin{equation}
+Russian\_TV\_Signal_{i} = \beta X_{i} + \epsilon_{i},
+\end{equation}
+where $Russian\_TV\_Signal_{i}$ represents the availability of Russian television and $X_i$ is a matrix of controls.
+
+The stochastic component of the model I define as the following:
+\begin{equation}
+Y_{i} \sim N(y_{i} \mid \theta_{i},\alpha),
+\end{equation}
+where $Y_{i}$ is the normally distributed dependent variable. The systematic component of the model looks as
+\begin{equation}
+\theta_{i} = g(\mathbf{X}_i,\beta),
+\end{equation}
+where $\mathbf{X}_i$ is the matrix of key explanatory variables and control variables:
+\begin{equation}
+\beta_1Signal + \beta_2Distance_i + \beta_3Controls + \epsilon_i,
+\end{equation}
+
+To make a mechanism of the interaction effect more intuitive, I write the model as follows:
+\begin{equation}
+\beta_{1}Signal_{i}  + (\beta_{2} + \beta_{3}Signal_{i})Russians_{i} + Controls_{i}\beta_{4} ,
+\end{equation}
+
+\clearpage
+
+\section{Descriptive statistics}\label{sec:sumstat}
+
+<<echo=FALSE,results='asis',message=FALSE>>=
+scores <-  data.frame(dt$NA., 
+                      dt$Against..share., 
+                      dt$signal_norm, 
+                      dt$Work.age_pct, 
+                      dt$Age60_pct, 
+                      dt$AllRus_pct, 
+                      dt$Edu_pct, 
+                      dt$uemp_norm, 
+                      dt$Total.voters.Referendum.1998, 
+                      dt$Ref1998, 
+                      dt$Totality.of.voters, 
+                      dt$turn2003, 
+                      dt$Distance.to.Russia..km., 
+                      dt$Population.2000)
+
+scores_matrix <- matrix(scores)
+@
+
+<<echo=FALSE,results='hide'>>=
+print(xtable(descr(scores, stats = "common", transpose = TRUE, headings = FALSE), 
+             caption="Full list of covariates", digits=2), caption.placement = "top", floating=TRUE, table.placement = "h!")
+@
+
+<<echo=FALSE,results='asis'>>=
+stargazer(scores, summary.stat = c("n", "mean", "sd", "min", "max"), covariate.labels = c(
+"Vote share for joining the EU",
+"Vote share against joining the EU",
+"Russian TV signal strength",
+"Working age (share)",
+"Aged 60 and over (share)",
+"Ethnic Russians (share)",
+"Higher Education (share)",
+"Unemployed (share)",
+"Turnout 1998, n",
+"Results 1998",
+"Voters 2003, n",
+"Turnout 2003",
+"Distance to Russia, km",
+"Population, n"
+), title = "This table report essential statistics for county-level covariates. Dummies like Village, Main roads, Railways, River or Lake, Former USSR Factory are not included into this table.", 
+notes = "", notes.append = FALSE, digits = 2)
+@
+
+\clearpage
+
+\begin{center}
+<<Distributions,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=5,fig.height=5>>=
+
+Hist_dist <- ggplot(dt, aes(x=Distance.to.Russia..km.)) + 
+    geom_histogram(aes(y=..density..), binwidth=5, colour="black", fill="white") +
+    geom_density(alpha=.1, fill="black") + 
+    labs(x="County distance to Russia (km)", y="") + theme_classic() +
+    theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+Hist_signal <- ggplot(dt, aes(x=signal_norm)) + 
+    geom_histogram(aes(y=..density..), binwidth=0.03, colour="black", fill="white") +
+    geom_density(alpha=.1, fill="black") + 
+    labs(x="Russian TV signal strength", y="")  + theme_classic() +
+    theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+Hist_vote <- ggplot(dt, aes(x=NA.)) + 
+    geom_histogram(aes(y=..density..), binwidth=0.02, colour="black", fill="white") +
+    geom_density(alpha=.1, fill="black") + 
+    labs(x="Vote share for joining the EU", y="") + theme_classic() +
+    theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+Hist_rus <- ggplot(dt, aes(x=Ethn.Rus_pct)) + 
+    geom_histogram(aes(y=..density..), binwidth=0.02, colour="black", fill="white") +
+    geom_density(alpha=.1, fill="black") + 
+    labs(x="Share of ethnic Russians in a county", y="")  + theme_classic() + 
+    theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+gridExtra::grid.arrange(Hist_signal, Hist_dist, Hist_rus, Hist_vote, ncol=2)
+
+@
+\end{center}
+
+\begin{center}
+<<Dist_signal,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=5,fig.height=3>>=
+
+# signal vs. distance to Russia
+DistSignal <- ggplot(dt, aes(x = -Distance.to.Russia..km., y = signal_norm)) +
+  geom_point(size=1) + 
+  stat_smooth(method = 'lm', formula = y~x, color = "black", size=0.5) +
+  labs(x = "Distance to Russia", y = "Russian TV Signal Strength") +
+  theme_classic() +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8))
+
+DistSignal_Hetero <- ggplot(data = dt,
+       mapping = aes(x = -Distance.to.Russia..km., y = signal_norm)) +
+       labs(x = "Distance to Russia", y = "") +
+       geom_point(size=1) + geom_smooth(size=1) + theme_classic()+
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8))
+
+DistSignal_Hetero_log <- ggplot(data = dt,
+       mapping = aes(x = -log(Distance.to.Russia..km.), y = signal_norm)) +
+       labs(x = "ln(Distance to Russia)", y = "") +
+       geom_point(size=1) + geom_smooth(size=1) + theme_classic()+
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8))
+
+gridExtra::grid.arrange(DistSignal, DistSignal_Hetero_log, ncol=2)
+
+@
+\end{center}
+
+\clearpage
+
+\section{Balance test}\label{sec:indeptest}
+
+<<Balance tests,echo=FALSE,results='hide',warning=FALSE,message=FALSE>>=
+
+# From Rozenas code: Signal quality in dBmV (dBm + 107) conditional on erp_Kw and loss itm$quality <- 106.92 + 10*log10(itm$erp_kw) - 20*log10(itm$distance) - itm$effloss + 107
+
+# Estimated signal quality from Radio Mobile
+# hist(dt$Signal.NEW.dB, 30)
+# the threshold for analog TV availability suggested by the United States Federal Communications Commission, which ranges from 11 to 45 dBmuV’s, (FCC, 2002). FCC. 2002. The ILLR Computer Prorgam. Federal Communications Commission.
+
+data <- na.omit(dt)
+
+# create the main outcome variable
+data$ForEU <- data$For/data$Totality.of.voters
+# log scale for Distance to Russia
+data$russdist <- log(data$Distance.to.Russia..km.)
+# measure of Russian reception on ITM Radio Mobile by Remko Welling
+data$Signal.NEW.dB # looks like "qualityq" in Rozenas AJPS paper
+# measure of Russian reception on ITM Radio Mobile by the author
+data$Signal.Pskov..dBm. # the Pskov tower is the largest close to Latvia
+data$signal_norm # normalizes [0,1]
+data$Signal_binary # dichotomized
+
+# creating a dummy for Rus county
+# threshold = 70
+# data$AllRus70[data$Ethn.Rus_pct >= .7] <- 1
+# data$AllRus70[data$Ethn.Rus_pct < .7] <- 0
+#  threshold = 60
+data$AllRus_dummy60[data$Ethn.Rus_pct >= .6] <- 1
+data$AllRus_dummy60[data$Ethn.Rus_pct < .6] <- 0
+# dt$AllRus_dummy60[dt$AllRus_pct >= 60] <- "Russian (>=60%)"
+# dt$AllRus_dummy60[dt$AllRus_pct < 60] <- "Latvian (<60%)"
+
+#### Balance tests ####
+# Number of bootstraps:
+boots <- 1000
+# Set rng seed:
+set.seed(10)
+# Compute residuals by adjusting for distance (and rescale to [0, 1] for comparability)
+fitres_lv <- selectK(lm(Signal.NEW.dB ~ ns(russdist, K.star), data = data, 
+                        na.action = na.exclude))
+data$qualityqr <- range01(residuals(fitres_lv))
+
+# Compute residuals by adjusting for districts + distance (and rescale to [0, 1] for comparability)
+fitres_lv2 <- selectK(lm(Signal.NEW.dB ~ ns(russdist, K.star) + 
+                           factor(District), data = data, na.action = na.exclude))
+data$qualityqrr <- range01(residuals(fitres_lv2))
+
+fit <- NULL
+fit[[1]] <- lm(Ref1998 ~ qualityqr, data = data) # vote against constitution change in 1998
+fit[[2]] <- update(fit[[1]], log(Total.voters.Referendum.1998) ~ .) # total voters 1998
+fit[[3]] <- update(fit[[1]], Ethn.Rus_pct ~ .)
+fit[[4]] <- update(fit[[1]], AllRus_pct ~ .)
+fit[[5]] <- update(fit[[1]], log(Population.2000) ~ .)
+fit[[6]] <- update(fit[[1]], Village ~ .)
+fit[[7]] <- update(fit[[1]], Main.roads ~ .)
+fit[[8]] <- update(fit[[1]], Railways ~ .)
+fit[[9]] <- update(fit[[1]], Former.USSR.factory ~ .)
+fit[[10]] <- update(fit[[1]], Work.age_pct ~ .)
+fit[[11]] <- update(fit[[1]], Age60_pct ~ .)
+fit[[12]] <- update(fit[[1]], Edu_pct ~ .)
+fit[[13]] <- update(fit[[1]], Large.River.or.Lake ~ .)
+fit[[14]] <- update(fit[[1]], uemp_norm ~ .)
+
+# Re-estimate the above using residuals after district FE's
+fitr <- lapply(fit, function(x) update(x, . ~ qualityqrr))
+
+# Compute clustered errors for each model:
+clf <- function(x) {
+  w <- grep("qualityq", names(coef(x)))
+  coeftest(x, vcov = cluster.boot(x, cluster = ~ County, 
+                                  boot_type = "wild", R = boots))[w, c(1, 2, 4)]
+}
+
+out <- do.call("cbind", lapply(list(fit, fitr), function(x) roundr(do.call("rbind", lapply(x, clf)), 2)))
+
+@
+
+\begin{center}
+<<Table with balance tests,echo=FALSE,results='asis',warning=FALSE,message=FALSE>>=
+
+# Prepare output for table
+tab <- cbind(out, unlist(lapply(fit, function(x) nrow(model.frame(x)))))
+names <- c("Pro-Russian vote, 1998", "Number of votes, 1998", "\\% Ethnic Russians", "\\% Russian speakers",  "Population (log)", "Rural precinct",  "Close to highways", "Close to railways", "Former USSR factory", "\\% Working age", "Age 60 and more", "Higher education", "Large river or lake", "\\% Unemployed")
+names <- paste(1:nrow(tab), ". ", names, sep = "")
+tab <- cbind(names, tab[, 1:3], "", tab[,4:6], "", tab[, 7])
+
+print(xtable(tab, caption="Balance tests. OLS coefficients for residualized Russian television reception.", label = "tab:balance", align = c("l", "l@{\\hskip .2in}", "c", "c", "c", "c", "c", "c", "c", "l@{\\hskip .3in}", "l")), 
+      include.rownames = FALSE, 
+      include.colnames = FALSE,
+      table.placement = 'H',
+      caption.placement = 'bottom', sanitize.text.function=function(x){x},
+      hline.after = NULL,
+      add.to.row = list(pos = list(-1, 0, 0, 0, 0, 0, 0, 10, 10, 10, nrow(out)),
+                        command = c('\\toprule\n ', " & \\multicolumn{3}{c}{County-level effects} && \\multicolumn{3}{c}{District fixed effects}\\\\\n", "\\cmidrule{2-4} \\cmidrule{6-8} \n", " & \\multicolumn{1}{c}{Est.} & \\multicolumn{1}{c}{S.E.} & \\multicolumn{1}{c}{p-val.} && \\multicolumn{1}{c}{Est.} &  \\multicolumn{1}{c}{S.E.} & \\multicolumn{1}{c}{p-val.} & & \\multicolumn{1}{c}{Obs.}\\\\\n", '\\midrule\n ' , "\\multicolumn{5}{l}{Precinct population features}\\\\\n" , '\\midrule\n ', '\\midrule\n ',  "\\multicolumn{5}{l}{Precinct features}\\\\\n" , '\\midrule\n ', '\\bottomrule\n')), type = "latex"
+)
+
+@
+\end{center}
+
+\clearpage
+
+% \section{Main regression results}
+
+<<Main regression results,echo=FALSE,results='hide',warning=FALSE>>=
+
+# Regressions (incl. selection of spline knots via selectK function)
+ofit <- NULL
+# with Vote for the EU
+ofit[[1]] <- selectK(lm(ForEU ~ ns(russdist, K.star) + signal_norm, data = data))
+ofit[[2]] <- selectK(update(ofit[[1]], . ~ . + Ethn.Rus_pct + Ref1998 + I(Village) + log(Main.roads + 1)))
+# with turnout 2003
+ofit[[3]] <- selectK(update(ofit[[1]], turn2003 ~ . ))
+ofit[[4]] <- selectK(update(ofit[[2]], turn2003 ~ . ))
+
+# Prepare output for table (inc. compute clusterred standard errors)
+ests <- outtex(ofit, omit = c("factor", "russdist"), cluster = "County", boots = boots)
+tab <- ests[-(1:2), ]
+g <- rev(rev(1:nrow(tab))[1:2])
+tab <- rbind(tab[-g, ], tab[g, ])
+tab[,1] <- c("Russian TV reception quality", "" , "Percent of Russian speakers", "", "Pro-Russian vote in referendum, 1998", "", "Rural precinct", "", "Close to highways", "", "Adjusted $R^2$", "Observations")
+print(xtable(tab, caption="Precinct-level regression results. Dependent variables are vote-percentages for joining the European Union. All specifications control for smoothing splines for distance to Russia.",
+             label = "tab:regressions",
+             align = c("l", "l", "c", "c", "c", "c")),
+      sanitize.text.function = identity,
+      hline.after = NULL,
+      include.rownames = FALSE,
+      include.colnames = FALSE,
+      table.placement = 'H',
+      caption.placement = 'top',
+      add.to.row = list(
+      pos = as.list(c(-1, -1, -1, 0, 0, seq(1, nrow(tab) - 3, by = 2), nrow(tab), nrow(tab))),
+      command = c("\\toprule\n", "& \\multicolumn{2}{c}{Vote for the EU} & \\multicolumn{2}{c}{Turnout}\\\\\n", "\\cmidrule(l){2-3} \\cmidrule(l){4-5}\n" , "& \\multicolumn{1}{l}{Baseline} & \\multicolumn{1}{l}{Full} & \\multicolumn{1}{l}{Baseline} & \\multicolumn{1}{l}{Full}\\\\\n", "\\midrule\n" , rep("\\vspace{.1cm}\n", (nrow(tab) - 2)/2), "\\bottomrule\n", "\\multicolumn{5}{l}{{\\footnotesize Standard errors are in parentheses; $^{*}$p$<$0.05; $^{**}$p$<$0.01; $^{***}$p$<$0.001}.\n}")), type = "latex")
+
+@
+
+\clearpage
+
+\section{Robustness regressions}
+
+<<Robustness checks,echo=FALSE,results='asis',warning=FALSE>>=
+
+# Robustness regressions for Vote for the EU
+Model <- ofit[[2]]
+fit.foreu <- NULL
+fit.foreu[[1]] <- update(Model, subset = russdist < log(50 + 1))
+fit.foreu[[2]] <- update(Model, subset = russdist > log(25 + 1))
+fit.foreu[[3]] <- update(Model, subset = (signal_norm > .2 & signal_norm < 0.8))
+fit.foreu[[4]] <- update(Model, . ~ . -I(Village==1), subset = Village==1)
+fit.foreu[[5]] <- update(Model, . ~ . -I(Village==1), subset = Village!=1)
+fit.foreu[[6]] <- update(Model, . ~ . , subset = District=="Daugavpils")
+fit.foreu[[7]] <- update(Model, . ~ . , subset = District!="Daugavpils")
+fit.foreu[[8]] <- update(Model, . ~ . + Age60_pct)
+fit.foreu[[9]] <- update(Model, . ~ . + log(uemp_norm + 1))
+fit.foreu[[10]] <- update(Model, . ~ . -Ethn.Rus_pct, subset = AllRus_dummy60==1)
+fit.foreu[[11]] <- update(Model, . ~ . -Ethn.Rus_pct, subset = AllRus_dummy60!=1)
+fit.foreu[[12]] <- update(Model, . ~ . + log(Population.2000))
+fit.foreu[[13]] <- update(Model, . ~ . + Higher.Education)
+
+# Repeat for turnout
+fit.turnout <- NULL
+for (i in 1:length(fit.foreu)){
+  fit.turnout[[i]] <- update(fit.foreu[[i]], turn2003 ~ . )
+}
+
+# Redo the above models by selecting optimal number of knots
+fit.foreu <- lapply(fit.foreu, selectK)
+fit.turnout <- lapply(fit.turnout, selectK)
+
+# Prepare results for tabling (incl. boostrap SE's and p-values)
+out <- function(fit){
+  b <- grepl("signal_norm", names(coef(fit)))
+  var <- ifelse(!any(b), "signal_norm", names(coef(fit))[b])
+  outtex(list(fit), only = var, cluster = "County", boots = boots, 
+         single.var=TRUE)[[1]][, -1]
+}
+
+tab1 <- rbind(as.matrix(do.call("rbind", lapply(fit.foreu, out))), c("", ""))
+tab2 <- rbind(as.matrix(do.call("rbind", lapply(fit.turnout, out))), c("", ""))
+# tab1 <- tab1[c(1:8, 12, 13, 9:11), ]
+# tab2 <- tab2[c(1:8, 13, 12, 9:11), ]
+# tab <- cbind(tab1[, -3], "", tab2[,1:2], "")
+tab <- cbind(tab1[-14,], "", tab2[-14,], "")
+rownames(tab) <- c("Distance to Russia $<$ 50 km", "Distance to Russia $>$ 25 km", "Russian TV reception $\\in(0.2, 0.8)$", "Only villages", "Only towns and cities", "Only Daugavpils district", "Without Daugavpils district", "Control for $\\geq$ 60 years olds (\\%)", "Control for unemployment rate", "$\\geq$ 60\\% Russian speakers", "$\\leq$ 60\\% Russian speakers", "Control for population N (log)", "Control for higher education (\\%)")
+rownames(tab) <- paste(1:nrow(tab), rownames(tab), sep = ". ")
+n <- prettyNum(unlist(lapply(fit.turnout, function(x) nrow(model.matrix(x)))), big.mark=",", preserve.width="none")
+n <- paste("$", n, "$")
+# tab <- cbind(tab, c(n[1:10], n[10], n[11:length(n)]))
+tab <- cbind(tab, n)
+print(xtable(tab, caption="Robustness checks: regression coefficients for Russian TV reception. All specifications include the full set of covariates", label = "tab:robustness", align = c("l@{\\hskip .3in}", "c", "c", "c@{\\hskip .1in}", "c", "c", "c@{\\hskip .1in}", "l")),      
+      include.rownames = TRUE, 
+      include.colnames = FALSE,
+      table.placement = 'H',
+      caption.placement = 'top', sanitize.text.function=function(x){x},
+      hline.after = NULL,
+      add.to.row = list(pos = list(-1, 0, 0, 0, 0, nrow(tab), nrow(tab)),
+                        command = c("\\toprule\n", "& \\multicolumn{2}{c}{Vote for the EU} & & \\multicolumn{2}{c}{Turnout}\\\\\n", "\\cmidrule(lr){2-3} \\cmidrule(r{.5cm}){5-6}\n", "\\multicolumn{1}{l}{~} & \\multicolumn{1}{c}{Coef.} &  \\multicolumn{1}{l}{~~S.E.} & & \\multicolumn{1}{c}{Coef.} & \\multicolumn{1}{l}{~~S.E.} & & \\multicolumn{1}{c}{Obs.} \\\\\n", "\\midrule\n", "\\bottomrule \n", "\\multicolumn{7}{l}{{\\footnotesize Note: Standard errors in parentheses; $^{*}$p$<$0.05; $^{**}$p$<$0.01; $^{***}$p$<$0.001.\n}}")),
+      type = "latex"
+)
+@
+
+\clearpage
+
+\section{Effect-Heterogeneity}
+
+Is the effect of the biased foreign media consistent across all ethnic Russians due to their shared historical background? Will it be fair to state that all Russians are affected by state propaganda by default since there is a lack of the influential independent Russian media outlets both abroad and within the Russian Federation? I suggest analyzing the state propaganda effects on an intergroup level, assuming that the effects can differ even within the ethnic groups themselves. In particular, I expect that, within the community of ethnic Russians, the impact of the biased media will vary across age as the younger generation has more experience with alternative sources of information such as the Internet media in comparison with elderly Russian citizens. Inside the Latvian group, the effects will be stronger among those who benefited from Soviet regime by working in large factories that were closed after the fall of the regime.
+
+\begin{center}
+<<Dist_Rus,echo=FALSE,results='asis',warning=FALSE,message=FALSE,fig.width=5,fig.height=3>>=
+
+# Russian county vs. Distance to Russia
+DistRus <- ggplot(dt, aes(x = -Distance.to.Russia..km., y = Ethn.Rus_pct)) +
+  geom_point(size = 0.5) + 
+  stat_smooth(method = 'lm', formula = y~x, color = "black", size=0.5) +
+  labs(x = "Distance to Russia", y = "Share of ethnic Russians in a county") +
+  theme_classic() +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8))
+
+
+DistRus_log <- ggplot(dt, aes(x = -log(Distance.to.Russia..km.), y = Ethn.Rus_pct)) + geom_point(size = 0.5) + 
+  stat_smooth(method = 'lm', formula = y~x, color = "black", size=0.5) +
+  labs(x = "ln(Distance to Russia)", y = "Share of ethnic Russians in a county") +
+  theme_classic() +
+  theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8))
+
+
+DistRus_log_Hetero <- ggplot(data = dt,
+       mapping = aes(x = -log(Distance.to.Russia..km.), y = Ethn.Rus_pct)) +
+       geom_point(size = 0.5) + geom_smooth(size=0.5) + theme_classic() + 
+  labs(x = "ln(Distance to Russia)", y = "Share of ethnic Russians in a county")       + theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=8))
+
+# Russian county vs. Signal
+Rus_Signal <- ggplot(dt, aes(x = Ethn.Rus_pct, y = Signal)) +
+  geom_point(size=0.5) + 
+  stat_smooth(method = 'lm', formula = y~x, color = "black", size=0.5) +
+  labs(x = "Share of ethnic Russians in a county", 
+       y = "Russian TV Signal Strength") +
+  theme_classic() +
+  theme(axis.text=element_text(size=8),
+  axis.title=element_text(size=8))
+
+
+Rus_Signal_Hetero <- ggplot(data = dt,
+            mapping = aes(x = Ethn.Rus_pct, y = Signal)) +
+            geom_point(size=0.5) + geom_smooth(size=0.5) + theme_classic() +
+            labs(x = "Share of ethnic Russians in a county", 
+            y = "Russian TV Signal Strength") +
+            theme(axis.text=element_text(size=8),
+            axis.title=element_text(size=8))
+
+gridExtra::grid.arrange(DistRus_log_Hetero, Rus_Signal_Hetero, ncol=2)
+# gridExtra::grid.arrange(DistRus, DistRus_log, DistRus_log_Hetero, ncol=3)
+
+@
+\end{center}
+
+\clearpage
+
+\subsection{Full Output of the Interactive Models}
+
+<<Interactive models,echo=FALSE,results='asis',warning=FALSE>>=
+
+# Fixed effects regression (Reception interacted with everything)
+# Number of nots is manually replaced with the value selected in the main 
+# regressions
+
+hfit <- NULL
+hfit[[1]] <- felm(ForEU ~ ns(russdist, 3) + signal_norm*(Ethn.Rus_pct + Ref1998 + I(Village) + log(Main.roads + 1)), data = data)
+hfit[[2]] <- felm(turn2003 ~ ns(russdist, 3) + signal_norm*(Ethn.Rus_pct + Ref1998 + I(Village) + log(Main.roads + 1)), data = data)
+
+# table with interactive models
+names <- c("Russian TV Reception", "Percent Russian speakers", "Pro-Russian vote, 1998", "Rural precinct", "Close to highways")
+out <- stargazer(hfit, omit = c("russdist"),  covariate.labels = c(names, paste("Russian TV Reception", names[-1], sep = " x ")), dep.var.labels = c("Vote for the EU", "Turnout"), dep.var.caption = "", column.labels = NULL, style = "apsr", single.row = TRUE, type = "latex", digits = 2, title = "Full output of the fully interactive regressions. Both specifications include splines for distance to Russia.", label = "tab:interactivemodels", star.cutoffs = c(.05, 0.01, 0.001))
+
+
+@
+
+% \clearpage
+
+% \subsection{Simplified Interactive Model}
+
+<<Simplified interactive model,echo=FALSE,results='hide',warning=FALSE>>=
+
+hfit <- NULL
+hfit[[1]] <- felm(ForEU ~ ns(russdist, 3) + signal_norm*Ref1998 + Ethn.Rus_pct + I(Village) + log(Main.roads + 1), data = data)
+hfit[[2]] <- felm(turn2003 ~ ns(russdist, 3) + signal_norm*Ref1998 + Ethn.Rus_pct + I(Village) + log(Main.roads + 1), data = data)
+
+out <- stargazer(hfit, omit = c("russdist"),  covariate.labels = c(names, paste("Russian TV reception", names[-1], sep = " x "), paste("Pro-Russian vote, 1998", names[-c(1, 3)], sep = " x ")), dep.var.labels = c("Vote for the EU", "Turnout"), dep.var.caption = "", column.labels = NULL, style = "apsr", single.row = TRUE, type = "latex", digits = 2, title = "Full output of the fully interactive regressions. Both specifications include splines for distance to Russia.", label = "tab:simpleinteractivemodels", star.cutoffs = c(.05, 0.01, 0.001))
+
+@
+
+\clearpage
+
+\subsection{More Flexible Interactive Model}
+
+<<More flexible Interactive Model,echo=FALSE,results='asis',warning=FALSE>>=
+
+# Reception and vote in 1998 interacted with everything
+hfit <- NULL
+hfit[[1]] <- felm(ForEU ~ ns(russdist, 3) + signal_norm*(Ethn.Rus_pct + Ref1998 + I(Village) + log(Main.roads + 1)) + Ref1998*(Ethn.Rus_pct+ I(Village)+ log(Main.roads + 1)), data = data)
+hfit[[2]] <- felm(turn2003 ~ ns(russdist, 3) + signal_norm*(Ethn.Rus_pct + Ref1998 + I(Village) + log(Main.roads + 1)) + Ref1998*(Ethn.Rus_pct + I(Village) + log(Main.roads + 1)), data = data)
+
+stargazer(hfit, omit = c("russdist"),  covariate.labels = c(names, paste("Russian TV reception", names[-1], sep = " x "), paste("Pro-Russian vote, 1998", names[-c(1, 3)], sep = " x ")), dep.var.labels = c("Vote for the EU", "Turnout"), dep.var.caption = "", column.labels = NULL, style = "apsr", single.row = TRUE, type = "latex", digits = 2, title = "Full output of the fully interactive regressions. Both specifications include splines for distance to Russia.", label = "tab:flexibleinteractivemodels", star.cutoffs = c(.05, 0.01, 0.001))
+
+@
+
+\clearpage
+
+\subsection{KRLS-Based Heterogeneity Estimates}
+
+\begin{center}
+<<KRLS-Based Heterogeneity Estimates,echo=FALSE,results='hide',warning=FALSE, message=FALSE,fig.show='asis',fig.width=5,fig.height=4>>=
+
+# Create design matrix
+data$village <- 1*(data$Village == 1)
+Model <- lm(cbind(ForEU, turn2003) ~ russdist + village + Ethn.Rus_pct + log(Main.roads + 1) + Ref1998 + signal_norm, data = data)
+y <- model.frame(Model, "response")[[1]]
+X <- model.matrix(Model, type="response")[, -1]
+
+kfit <- function(i) {
+  library(KRLS)
+  krls(X = X, y = y[,i], whichkernel = "gaussian", derivative = TRUE, binary= FALSE, vcov=TRUE, print.level = 0)
+}
+
+kerfit <- NULL
+for(i in 1:2) kerfit[[i]] <- kfit(i)
+save(kerfit, file="kerfit.Rdata")
+
+pf <- function(t, x, main = NULL, hist = TRUE, xlab = "Pro-Russian vote, 1998", ylab = "Marginal effect of Russian TV", scale.x = NULL){
+  if (hist){
+    par(mgp = c(2,.75, 0), mar=c(3,3,3,0))
+    y <- kerfit[[t]]$derivatives[, "signal_norm"]
+    h <- hist(y, breaks = 100, plot=FALSE)
+    col <- ifelse(h$breaks < 0, "dark red", "dark blue")
+    plot(h, xaxt = 'n', las = 1, xlab = "Marginal effect of Russian TV", main = main, ylab = "", col = col)
+    axis(1, at = seq(-1, 1, by = 0.2))
+  }
+  x <- X[ , x]
+  yhat <- kerfit[[t]]$derivatives[, "signal_norm"]
+  phat <- predict(locfit(yhat ~  lp(x, nn=.3)), newdata=sort(x), se.fit=TRUE)
+  if(!is.null(scale.x)) x <- scale.x(x) 
+  Y <- cbind(phat$fit, phat$fit - 2*phat$se.fit, phat$fit + 2*phat$se.fit)
+  matplot(sort(x), Y, col = "black", lwd = 2, type = "l", xlab = xlab, ylab = "Marginal effect of Russian TV", lty = c(1, 3, 3), 
+          cex.lab=0.8, cex.axis=0.8)
+  rug(x, col = "black")
+  title(main, line = 0.5)
+  abline(h = 0, col = "grey", lty = 1, lwd = 2)
+  round(x[which.min(abs(phat$fit))], 0) 
+  print(mean(kerfit[[t]]$derivatives[, "signal_norm"] < 0))
+}
+
+par(mfcol = c(2,2))
+pf(1, main = "Vote for the EU", x = "Ref1998", hist = TRUE)
+pf(2, ylab = "",  main = "Turnout", x = "Ref1998")
+
+@
+\end{center}
+
+\clearpage
+
+<<Plot marginal effects conditional on other covariates, echo=FALSE,results='hide',warning=FALSE,fig.width=6,fig.height=5>>=
+
+# Fn to plot marginal effects conditional on other covariates
+replot <- function(x, xlab = xlab, scale.x = NULL){
+  sapply(1:2, function(z) pf(z, ylab = "", main = ifelse(z == 1, "Vote for the EU", "Turnout"), x = x, xlab = xlab, hist = FALSE, scale.x = scale.x))
+}
+
+# uncomment these lines to make plots:
+# par(mfrow = c(2, 2))
+# replot("russdist", xlab = "Distance to Russia", scale.x = function(x) exp(x))
+# replot("Ethn.Rus_pct", xlab = "Share of Russian speakers")
+
+@
+
+\clearpage
+
+\bibliographystyle{chicago-ff}
+\bibliography{bib}
+\end{document}
